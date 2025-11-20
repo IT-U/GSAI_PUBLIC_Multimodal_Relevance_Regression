@@ -429,7 +429,7 @@ def _(
             # Load softmax predictions on test data
             test_preds_text = np.load(os.path.join(DATA_PATH, 'input', 'preds_text_test.npy'))
             print(f"Loaded test softmax probabilities from file: {test_preds_text}")
-            
+
             # placeholders
             meta_training_results: list[dict] = []
 
@@ -706,6 +706,21 @@ def _(
 
     regression_results: pd.DataFrame = evaluate_regression(train_df=df_train_decay, test_df=df_test_decay,
                                                            models=regression_models)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    At the end, we save all results for visualisation.
+    """)
+    return
+
+
+@app.cell
+def _(DATA_PATH: str, df_test_decay, df_train_decay, os):
+    df_train_decay.to_parquet(os.path.join(DATA_PATH, 'output', 'decay_train_df.parquet'))
+    df_test_decay.to_parquet(os.path.join(DATA_PATH, 'output', 'decay_test_df.parquet'))
     return
 
 
