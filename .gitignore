@@ -212,3 +212,5 @@ decay_classif_eval.csv
 decay_fit_results.json
 decay_curves.pdf
 decay_feature_performance.pdf
+decay_test_df.parquet
+decay_train_df.parquet
