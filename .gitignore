@@ -207,4 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # Don't push any results
-./data/output/*
+regression_eval.csv
+decay_classif_eval.csv
+decay_fit_results.json
+decay_curves.pdf
+decay_feature_performance.pdf

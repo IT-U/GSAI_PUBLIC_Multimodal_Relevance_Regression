@@ -11,6 +11,8 @@ services:
       - ./data:/workspace/data
       - ./src/:/workspace/src
       - ./notebooks/:/workspace/notebooks
+    ports:
+      - 8080:8080   # host:container
 
   # #################
   # Experiments
@@ -18,11 +20,13 @@ services:
   edit-experiments:
     extends:
       service: base
-    command: ["marimo", "edit", "notebooks/experiments.py"]
+    image: relevance-regression/edit-experiments
+    command: ["marimo", "edit", "notebooks/experiments.py", "--host", "0.0.0.0", "--port", "8080"]
 
   run-experiments:
     extends:
       service: base
+    image: relevance-regression/run-experiments
     command: ["python", "notebooks/experiments.py"]
 
   # #################
@@ -31,9 +35,11 @@ services:
   edit-visualisations:
     extends:
       service: base
-    command: ["marimo", "edit", "notebooks/visualisation.py"]
+    image: relevance-regression/edit-visualisations
+    command: ["python", "-m", "marimo", "edit", "notebooks/visualisation.py", "--host", "0.0.0.0", "--port", "8080"]
 
   run-visualisations:
     extends:
       service: base
-    command: ["marimo", "run", "notebooks/visualisation.py"]
+    image: relevance-regression/run-visualisations
+    command: ["python", "notebooks/visualisation.py"]
