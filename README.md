@@ -12,16 +12,16 @@ We therefore provide post IDs, the corresponding relevance labels, and all deriv
 
 All data is available in the folder `./data`:
 - `train_data_public.parquet`: Anonymised training data (3,659 posts)
-- `oof_preds_text_train`: Out-of-fold softmax predictions on the training data from a fine-tuned TwHIN-BERT text classifier for meta learning
+- `oof_preds_text_train.npy`: Out-of-fold softmax predictions on the training data from a fine-tuned TwHIN-BERT text classifier for meta learning
 - `test_data_public.parquet`: Anonymised test data (915 posts)
-- `preds_text_test`: Softmax predictions of a TwHIN-BERT text classifier, fine-tuned on the full training data
+- `preds_text_test.npy`: Softmax predictions of a TwHIN-BERT text classifier, fine-tuned on the full training data
 
 ## 🐳 Reproduction
 Our full experimental pipeline is available as a containerised Docker image.
 
 To run the experiments, use:
 ```bash
-docker compose run run-experiments   # experiments as python script
+docker compose run run-experiments   # run experiments as python script
 docker compose run edit-experiments  # edit mode as a marimo notebook
 ```
 
