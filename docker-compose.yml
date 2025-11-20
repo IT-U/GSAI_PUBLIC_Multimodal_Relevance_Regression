@@ -1,0 +1,39 @@
+services:
+
+  # #################
+  # Base service for further usage
+  # #################
+  base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/workspace/data
+      - ./src/:/workspace/src
+      - ./notebooks/:/workspace/notebooks
+
+  # #################
+  # Experiments
+  # #################
+  edit-experiments:
+    extends:
+      service: base
+    command: ["marimo", "edit", "notebooks/experiments.py"]
+
+  run-experiments:
+    extends:
+      service: base
+    command: ["python", "notebooks/experiments.py"]
+
+  # #################
+  # Visualisations
+  # #################
+  edit-visualisations:
+    extends:
+      service: base
+    command: ["marimo", "edit", "notebooks/visualisation.py"]
+
+  run-visualisations:
+    extends:
+      service: base
+    command: ["marimo", "run", "notebooks/visualisation.py"]
