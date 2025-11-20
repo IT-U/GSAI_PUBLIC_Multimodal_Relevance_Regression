@@ -12,7 +12,7 @@ services:
       - ./src/:/workspace/src
       - ./notebooks/:/workspace/notebooks
     ports:
-      - 8080:8080   # host:container
+      - 8080:8080   # marimo port, host:container
 
   # #################
   # Experiments

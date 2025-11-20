@@ -4,7 +4,7 @@ FROM python:3.12-slim AS runtime
 # Working directory
 WORKDIR /workspace
 
-# Install required tools for microsoft font installation
+# Install required tools for installing Arial
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
@@ -13,7 +13,7 @@ RUN apt-get update && \
         fontconfig && \
     rm -rf /var/lib/apt/lists/*
 
-# Download and extract Microsoft Core Fonts manually
+# Download and extract Microsoft Core Fonts (Arial) manually
 RUN mkdir -p /usr/share/fonts/truetype/msttcorefonts && \
     cd /usr/share/fonts/truetype/msttcorefonts && \
     wget -q https://downloads.sourceforge.net/corefonts/arial32.exe && \
