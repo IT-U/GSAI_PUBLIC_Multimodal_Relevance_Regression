@@ -267,7 +267,6 @@ def _(DATA_PATH: str, os, pd):
     ]
     regression_metrics
     print(regression_metrics.to_latex())
-
     return (regression_metrics,)
 
 
@@ -330,6 +329,47 @@ def _(
         print(latex_table)
 
     print_regression_metric_table(classif_df=classif_baseline, reg_df=regression_metrics)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## 3. Other
+    Beyond what we have so far, I also have other visualisations to
+    """)
+    return
+
+
+@app.cell
+def _(DATA_PATH: str, os, pd):
+    def print_data_overview():
+        df_train: pd.DataFrame = pd.read_parquet(os.path.join(DATA_PATH, 'input', 'train_data_public.parquet'))
+        df_test: pd.DataFrame = pd.read_parquet(os.path.join(DATA_PATH, 'input', 'test_data_public.parquet'))
+        print(df_train.shape, df_test.shape)
+
+        # calculate sizes
+        df_train_size: pd.DataFrame = df_train.groupby('use_case').size().reset_index()
+        df_train_size.columns = ['Use case', 'Train size']
+        df_test_size: pd.DataFrame = df_test.groupby('use_case').size().reset_index()
+        df_test_size.columns = ['Use case', 'Test size']
+    
+        # combine datasets
+        size_df: pd.DataFrame = pd.merge(left=df_train_size, right=df_test_size, how='inner', on='Use case')
+
+        # print
+        print(size_df.to_latex(
+            index=False,
+            escape=False,
+            column_format='lcc',
+            caption="Overview of our evaluation data.",
+            label="tab:data-overview",
+            bold_rows=False
+        ))
+    
+        return size_df
+
+    print_data_overview()
     return
 
 

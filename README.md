@@ -6,7 +6,7 @@ This repository contains the reproduction code and data for the paper:
 The work was submitted to the **AGILE Conference 2026**.
 
 ## 💾 Data
-Our evaluation dataset was collected using the X (formerly Twitter) v1.1 filtered stream and recent search Application Programming Programming Interfaces (APIs). In accordance with X's [developer policies](https://developer.x.com/en/developer-terms/policy), it can only be shared as a list of post IDs.
+Our evaluation dataset was collected using the X (formerly Twitter) v1.1 and v2 filtered stream and recent search Application Programming Programming Interfaces (APIs). In accordance with X's [developer policies](https://developer.x.com/en/developer-terms/policy), it can only be shared as a list of post IDs.
 
 We therefore provide post IDs, the corresponding relevance labels, and all derived features used for inference. Furthermore, we provide the softmax outputs of the fine-tuned TwHIN-BERT model used for text classification.
 
