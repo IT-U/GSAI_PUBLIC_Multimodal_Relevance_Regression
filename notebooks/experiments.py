@@ -253,7 +253,7 @@ def _(
                 fit_results[name] = {"params": params, "r2": r2}
 
                 # Plot decay curve
-                label: str = f'{name} (R²={r2:.2f})'
+                label: str = f'{name} (R²={r2:.3f})'
                 label = label.replace('Stretched exponential', 'Stretched exp.')
                 ax.plot(x, y_pred, label=label, color=color, linewidth=2.0, zorder=2)
             except Exception as e:
@@ -282,7 +282,7 @@ def _(
     os,
     plt,
 ):
-    decay_fig, decay_axes = plt.subplots(1, 2, figsize=(10, 4), sharey=False)
+    decay_fig, decay_axes = plt.subplots(2, 1, figsize=(6, 8), sharey=False)
     spatial_fit_results, _, _ = fit_decay_function(
         df=df_train, distance_col='event_distance_km', bin_size=70, ax=decay_axes[0]
     )
@@ -304,6 +304,7 @@ def _(
 
     decay_fig.tight_layout()
     decay_fig.savefig(os.path.join(DATA_PATH, 'figures', 'decay_curves.pdf'), dpi=300)
+    decay_fig.show()
 
     # Save fitted parameters as JSON
     decay_params = {
@@ -459,9 +460,12 @@ def _(
                         X_test_non_text: np.ndarray = np.hstack([X_base_test, X_event_test])
 
                         # Features based on text probabilities and non-text features
-                        meta_part_features_train: np.ndarray = np.concatenate([X_train_non_text, oof_preds_text], axis=1)  # shape: [n_train, n_classes+9]  # noqa
+                        # shape: [n_train, n_classes+9]
+                        meta_part_features_train: np.ndarray = np.concatenate([X_train_non_text, oof_preds_text], axis=1)  # noqa
                         print(f'Feature vector size (train): {meta_part_features_train.shape}')
-                        meta_part_features_test: np.ndarray = np.concatenate([X_test_non_text, test_preds_text], axis=1)  # shape: [n_train, n_classes+12]  # noqa
+
+                        # shape: [n_train, n_classes+12]  # noqa
+                        meta_part_features_test: np.ndarray = np.concatenate([X_test_non_text, test_preds_text], axis=1)
                         print(f'Feature vector size (test): {meta_part_features_test.shape}')
 
                         # Fit and store all models
@@ -472,18 +476,24 @@ def _(
                             # Make test predictions
                             predictions: np.ndarray = part_meta_model.predict(meta_part_features_test)
                             probs: np.ndarray = part_meta_model.predict_proba(meta_part_features_test)
-                            test_df[f'pred_{model_name}_{non_text_name.lower()}_{encoding_name.lower()}_{decay_name.lower()}'] = predictions  # noqa
+                            test_df[
+                                f'pred_{model_name}_{non_text_name.lower()}_{encoding_name.lower()}_{decay_name.lower()}'
+                            ] = predictions  # noqa
 
-                            # Compute all needed evaluation metrics
-                            prec, rec, f1, support = precision_recall_fscore_support(test_df['int_label'], predictions, average='macro')  # noqa
-                            rmse: float = root_mean_squared_error(y_true=test_df['int_label'], y_pred=predictions)
-                            mae: float = mean_absolute_error(y_true=test_df['int_label'], y_pred=predictions)
+                            # -- Classification evaluation --
+                            prec, rec, f1, support = precision_recall_fscore_support(test_df['int_label'], predictions, average='macro')
                             roc_auc = roc_auc_score(y_true=test_df['int_label'], y_score=probs, multi_class='ovr')
                             acc = accuracy_score(y_true=test_df['int_label'], y_pred=predictions)
-                            r2: float = r2_score(y_true=test_df['int_label'], y_pred=predictions)
-                            corr, corr_pval = spearmanr(a=test_df['int_label'], b=predictions)
-                            msle: float = mean_squared_log_error(y_true=test_df['int_label'], y_pred=predictions)
-                            mape: float = mean_absolute_percentage_error(y_true=test_df['int_label'], y_pred=predictions)
+
+                            # -- Regression evaluation --
+                            scale_mapping = np.array([0.0, 0.5, 1.0])
+                            scaled_predictions: np.ndarray = scale_mapping[predictions]
+                            rmse: float = root_mean_squared_error(y_true=test_df['label_score'], y_pred=scaled_predictions)
+                            mae: float = mean_absolute_error(y_true=test_df['label_score'], y_pred=scaled_predictions)
+                            r2: float = r2_score(y_true=test_df['label_score'], y_pred=scaled_predictions)
+                            corr, corr_pval = spearmanr(a=test_df['label_score'], b=scaled_predictions)
+                            msle: float = mean_squared_log_error(y_true=test_df['label_score'], y_pred=scaled_predictions)
+                            mape: float = mean_absolute_percentage_error(y_true=test_df['label_score'], y_pred=scaled_predictions)
 
                             meta_training_results.append({
                                 'model_name': model_name,
@@ -509,6 +519,52 @@ def _(
                             })
 
                             print(f'- {model_name}: M-F1={f1:.2f}, ROC-AUC={roc_auc:.2f}, RMSE={rmse:.2f}, MAE={mae:.2f}')
+
+            # text-only baseline evaluation
+            print("\nEvaluating text-only classifier...")
+
+            # predicted label = argmax of softmax
+            text_only_pred = np.argmax(test_preds_text, axis=1)
+
+            # classification metrics
+            prec, rec, f1, support = precision_recall_fscore_support(test_df['int_label'], text_only_pred, average='macro')
+            acc = accuracy_score(y_true=test_df['int_label'], y_pred=text_only_pred)
+            roc_auc = roc_auc_score(y_true=test_df['int_label'], y_score=test_preds_text, multi_class='ovr')
+
+            # regression metrics (again using label_score)
+            scale_mapping = np.array([0.0, 0.5, 1.0])
+            scaled_text_only_pred: np.ndarray = scale_mapping[text_only_pred]
+            rmse = root_mean_squared_error(y_true=test_df['label_score'], y_pred=scaled_text_only_pred)
+            mae = mean_absolute_error(y_true=test_df['label_score'], y_pred=scaled_text_only_pred)
+            r2 = r2_score(y_true=test_df['label_score'], y_pred=scaled_text_only_pred)
+            corr, corr_pval = spearmanr(a=test_df['label_score'], b=scaled_text_only_pred)
+            msle = mean_squared_log_error(y_true=test_df['label_score'], y_pred=scaled_text_only_pred)
+            mape = mean_absolute_percentage_error(y_true=test_df['label_score'], y_pred=scaled_text_only_pred)
+
+            meta_training_results.append({
+                'model_name': 'text_only_softmax',
+                'method': 'text',
+                'non_text_features': 'none',
+                'encoding_features': 'none',
+                'decay_features': 'none',
+                'params': None,
+                'cv_macro_f1': None,
+                'model': None,
+                "test_macro_prec": prec,
+                "test_macro_rec": rec,
+                "test_macro_f1": f1,
+                'test_acc': acc,
+                "test_roc_auc": roc_auc,
+                "test_rmse": rmse,
+                "test_mae": mae,
+                "test_r2": r2,
+                'test_corr': corr,
+                'test_corr_p': corr_pval,
+                'test_msle': msle,
+                'test_mape': mape
+            })
+
+            print(f'Text-only: M-F1={f1:.2f}, ROC-AUC={roc_auc:.2f}, RMSE={rmse:.2f}, MAE={mae:.2f}')
 
             meta_val_result_df: pd.DataFrame = pd.DataFrame.from_dict(meta_training_results)
             meta_val_result_df.to_csv(RESULTS_CSV_PATH, index=False)
@@ -553,6 +609,7 @@ def _(
     RandomForestRegressor,
     Ridge,
     SVR,
+    accuracy_score,
     df_test_decay,
     df_train_decay,
     mean_absolute_error,
@@ -562,6 +619,7 @@ def _(
     optimise_regression_model,
     os,
     pd,
+    precision_recall_fscore_support,
     r2_score,
     root_mean_squared_error,
     spearmanr,
@@ -640,9 +698,12 @@ def _(
                         X_test_non_text: np.ndarray = np.hstack([X_base_test, X_event_test])
 
                         # Features based on text probabilities and non-text features
-                        meta_part_features_train: np.ndarray = np.concatenate([X_train_non_text, oof_preds_text], axis=1)  # shape: [n_train, n_classes+9]  # noqa
+                        # shape: [n_train, n_classes+9]
+                        meta_part_features_train: np.ndarray = np.concatenate([X_train_non_text, oof_preds_text], axis=1)
                         print(f'Feature vector size (train): {meta_part_features_train.shape}')
-                        meta_part_features_test: np.ndarray = np.concatenate([X_test_non_text, test_preds_text], axis=1)  # shape: [n_train, n_classes+12]  # noqa
+
+                         # shape: [n_train, n_classes+12]
+                        meta_part_features_test: np.ndarray = np.concatenate([X_test_non_text, test_preds_text], axis=1)
                         print(f'Feature vector size (test): {meta_part_features_test.shape}')
 
                         # Fit and store all models
@@ -655,9 +716,22 @@ def _(
                             # Make test predictions
                             predictions: np.ndarray = part_meta_model.predict(meta_part_features_test)
                             predictions = np.abs(predictions)
-                            test_df[f'reg_{model_name}_{non_text_name.lower()}_{encoding_name.lower()}_{decay_name.lower()}'] = predictions  # noqa
+                            test_df[
+                                f'reg_{model_name}_{non_text_name.lower()}_{encoding_name.lower()}_{decay_name.lower()}'
+                            ] = predictions
 
-                            # Compute all needed evaluation metrics
+                            class_levels: np.ndarray = np.array([0.0, 0.5, 1.0])
+                            pred_class: np.ndarray = (
+                                class_levels[np.abs(predictions[:, None] - class_levels).argmin(axis=1)] * 2
+                            ).astype(int)
+
+                            # classification metrics
+                            prec, rec, f1, support = precision_recall_fscore_support(
+                                test_df['int_label'], pred_class, average='macro'
+                            )
+                            acc = accuracy_score(y_true=test_df['int_label'], y_pred=pred_class)
+
+                            # -- regression metrics --
                             rmse: float = root_mean_squared_error(y_true=test_df['label_score'], y_pred=predictions)
                             mae: float = mean_absolute_error(y_true=test_df['label_score'], y_pred=predictions)
                             r2: float = r2_score(y_true=test_df['label_score'], y_pred=predictions)
@@ -674,6 +748,10 @@ def _(
                                 'params': part_meta_params,
                                 'cv_rmse': part_meta_rmse,
                                 'model': part_meta_model,
+                                "test_macro_prec": prec,
+                                "test_macro_rec": rec,
+                                "test_macro_f1": f1,
+                                'test_acc': acc,
                                 "test_rmse": rmse,
                                 "test_mae": mae,
                                 "test_r2": r2,
@@ -684,6 +762,52 @@ def _(
                             })
 
                             print(f'- {model_name}: RMSE={rmse:.2f}, MAE={mae:.2f}')
+
+            # text-only baseline evaluation
+            print("\nEvaluating text-only classifier for regression ...")
+
+            # predicted score = 0*p0 + 0.5*p1 + 1*p3
+            reg_weights: np.ndarray = np.array([0.0, 0.5, 1.0])
+            text_only_reg_score: np.ndarray = test_preds_text @ reg_weights
+            text_only_reg_class: np.ndarray = (
+                reg_weights[np.abs(text_only_reg_score[:, None] - reg_weights).argmin(axis=1)] * 2
+            ).astype(int)
+
+            # classification metrics
+            prec, rec, f1, support = precision_recall_fscore_support(test_df['int_label'], text_only_reg_class, average='macro')
+            acc = accuracy_score(y_true=test_df['int_label'], y_pred=text_only_reg_class)
+
+            # regression metrics (again using label_score)
+            rmse = root_mean_squared_error(y_true=test_df['label_score'], y_pred=text_only_reg_score)
+            mae = mean_absolute_error(y_true=test_df['label_score'], y_pred=text_only_reg_score)
+            r2 = r2_score(y_true=test_df['label_score'], y_pred=text_only_reg_score)
+            corr, corr_pval = spearmanr(a=test_df['label_score'], b=text_only_reg_score)
+            msle = mean_squared_log_error(y_true=test_df['label_score'], y_pred=text_only_reg_score)
+            mape = mean_absolute_percentage_error(y_true=test_df['label_score'], y_pred=text_only_reg_score)
+
+            meta_training_results.append({
+                'model_name': 'text_only_softmax',
+                'method': 'text',
+                'non_text_features': 'none',
+                'encoding_features': 'none',
+                'decay_features': 'none',
+                'params': None,
+                'cv_macro_f1': None,
+                'model': None,
+                "test_macro_prec": prec,
+                "test_macro_rec": rec,
+                "test_macro_f1": f1,
+                'test_acc': acc,
+                "test_rmse": rmse,
+                "test_mae": mae,
+                "test_r2": r2,
+                'test_corr': corr,
+                'test_corr_p': corr_pval,
+                'test_msle': msle,
+                'test_mape': mape
+            })
+
+            print(f'Text-only regression: RMSE={rmse:.2f}, MAE={mae:.2f}')
 
             meta_val_result_df: pd.DataFrame = pd.DataFrame.from_dict(meta_training_results)
             meta_val_result_df.to_csv(RESULTS_CSV_PATH, index=False)
@@ -719,8 +843,10 @@ def _(mo):
 
 @app.cell
 def _(DATA_PATH: str, df_test_decay, df_train_decay, os):
-    df_train_decay.to_parquet(os.path.join(DATA_PATH, 'output', 'decay_train_df.parquet'))
-    df_test_decay.to_parquet(os.path.join(DATA_PATH, 'output', 'decay_test_df.parquet'))
+    if not os.path.exists(os.path.join(DATA_PATH, 'output', 'decay_train_df.parquet')):
+        df_train_decay.to_parquet(os.path.join(DATA_PATH, 'output', 'decay_train_df.parquet'))
+    if not os.path.exists(os.path.join(DATA_PATH, 'output', 'decay_test_df.parquet')):
+        df_test_decay.to_parquet(os.path.join(DATA_PATH, 'output', 'decay_test_df.parquet'))
     return
 
 

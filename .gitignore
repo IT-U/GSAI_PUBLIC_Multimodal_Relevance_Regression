@@ -214,3 +214,4 @@ decay_curves.pdf
 decay_feature_performance.pdf
 decay_test_df.parquet
 decay_train_df.parquet
+decay_feature_performance_vertical.pdf

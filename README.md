@@ -21,16 +21,16 @@ Our full experimental pipeline is available as a containerised Docker image.
 
 To run the experiments, use:
 ```bash
-docker compose run --build --rm --service-ports run-experiments   # run experiments as python script
-docker compose run --build --rm --service-ports edit-experiments  # edit mode as a marimo notebook
+docker compose run --rm --service-ports run-experiments   # run experiments as python script
+docker compose run --rm --service-ports edit-experiments  # edit mode as a marimo notebook
 ```
 
 All results will be stored to `./data/output`, and all figures will automatically go to `./data/figures`. For editing, a [Marimo](https://marimo.io/) interface will be available at `localhost:8080`. Please make sure to use the access tokens from the stdout logs.
 
 To create the visualisations, use:
 ```bash
-docker compose run --build --rm --service-ports run-visualisations   # print and store visualisations as python script
-docker compose run --build --rm --service-ports edit-visualisations  # edit mode as a marimo notebook
+docker compose run --rm --service-ports run-visualisations   # print and store visualisations as python script
+docker compose run --rm --service-ports edit-visualisations  # edit mode as a marimo notebook
 ```
 
 The qualitative map was created manually using [QGIS 3.44.3](https://qgis.org/).
